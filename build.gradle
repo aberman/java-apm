@@ -1,0 +1,68 @@
+plugins {
+    id 'java'
+    id 'idea'
+}
+
+group 'berman.andrew'
+version '1.0'
+
+sourceCompatibility = 1.9
+
+repositories {
+    mavenCentral()
+    jcenter()
+}
+
+test {
+    jvmArgs "-javaagent:build/libs/${rootProject.name}-${rootProject.version}.jar"
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+task copyToLib( type: Copy ) {
+    into "$buildDir/libs/lib"
+    from configurations.compileOnly
+}
+
+jar {
+    dependsOn copyToLib
+    archiveName = "${rootProject.name}-${rootProject.version}.jar"
+    manifest {
+        attributes(
+                'Premain-Class': 'me.andrewberman.Agent',
+                'Can-Redefine-Classes': 'true',
+                'Can-Retransform-Classes': 'true',
+                'Can-Set-Native-Method-Prefix': 'true',
+                'Implementation-Title': "APM",
+                'Implementation-Version': rootProject.version,
+
+        )
+    }
+}
+
+afterEvaluate {
+    jar {
+        manifest {
+            attributes (
+                'Class-Path': configurations.compileOnly.files.collect { "lib/$it.name" }.join(' ')
+            )
+        }
+    }
+}
+
+
+//TODO: Add to README: Spring Boot is using a fatjar and has its own classloader hierarchy.  As a result, servlet-api is NOT accessible to the agent because the agent is in the system classloader.
+dependencies {
+    compileOnly (
+            'net.bytebuddy:byte-buddy:1.8.0',
+            'javax.servlet:javax.servlet-api:3.1.0'
+    )
+    testCompile (
+            'junit:junit:4.12',
+            'org.springframework:spring-test:5.0.8.RELEASE',
+            'javax.servlet:javax.servlet-api:3.1.0',
+            'net.bytebuddy:byte-buddy:1.8.0'
+    )
+}
